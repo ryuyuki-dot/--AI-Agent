@@ -19,23 +19,36 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Find gradlew and Build APK
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Find Project and Build APK
         run: |
-          # リポジトリ全体から gradlew を自動検索
-          GRADLEW_PATH=$(find . -name "gradlew" | head -n 1)
-          if [ -z "$GRADLEW_PATH" ]; then
-            echo "Error: gradlew file not found."
+          # build.gradle があるプロジェクトフォルダを自動検索
+          BUILD_FILE=$(find . \( -name "build.gradle" -o -name "build.gradle.kts" \) | grep -v "/app/" | head -n 1)
+          
+          if [ -z "$BUILD_FILE" ]; then
+            # rootに直接 app フォルダがある場合
+            BUILD_FILE=$(find . \( -name "build.gradle" -o -name "build.gradle.kts" \) | head -n 1)
+          fi
+
+          if [ -z "$BUILD_FILE" ]; then
+            echo "Error: build.gradle file not found."
             exit 1
           fi
-          echo "Found gradlew at: $GRADLEW_PATH"
-          
-          # 実行権限の付与
-          chmod +x "$GRADLEW_PATH"
-          
-          # 該当フォルダへ移動してビルド実行
-          BUILD_DIR=$(dirname "$GRADLEW_PATH")
-          cd "$BUILD_DIR"
-          ./gradlew assembleDebug
+
+          PROJECT_DIR=$(dirname "$BUILD_FILE")
+          echo "Found project directory at: $PROJECT_DIR"
+          cd "$PROJECT_DIR"
+
+          # gradlew があれば実行、なければシステム標準の gradle を使用
+          if [ -f "./gradlew" ]; then
+            chmod +x ./gradlew
+            ./gradlew assembleDebug
+          else
+            echo "gradlew not found. Running system gradle command..."
+            gradle assembleDebug
+          fi
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
