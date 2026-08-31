@@ -30,6 +30,16 @@
 ※ このワークフローはデバッグ用APK（署名なし・そのままインストール可能）を作ります。
    ストア公開等が必要な場合は署名付きreleaseビルドへの変更が別途必要です。
 
+## 「Error parsing AndroidManifest.xml」が出た場合
+このプロジェクト内の `AndroidManifest.xml` 自体はXML構文としては正常です（`xmllint`で検証済み）。
+この種のエラーは、GitHubへのアップロードやWeb上での編集時に
+- ファイル先頭にUTF-8 BOMが付与される
+- 改行コードがCRLFに変換される
+ことで発生することが多いです。`.github/workflows/build-apk.yml` にビルド前の自動正規化・検証ステップを
+追加したので、次回のビルドではこれが自動修正されます。それでも失敗する場合は、
+Actionsの実行結果からダウンロードできる `gradle-build-log` Artifactに詳細な原因（`--stacktrace --info`付き）
+が出力されます。
+
 ## 元コードからの主な変更点
 - `app.routers.schedules`（週末プランAPI）が `main.py` からimportされているのに未提供だったため新規作成
 - 利用状況ログ受信・おすすめAction取得用の `app.routers.actions` を新規作成（SQLの `action_recommendations` / `user_app_usages` テーブルに対応）
