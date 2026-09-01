@@ -3,6 +3,8 @@ package com.aiagent.personal.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -53,7 +55,7 @@ fun WeekendPlanScreen() {
         Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Text("週末の提案", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
             IconButton(onClick = { loadPlan() }) {
-                Icon(androidx.compose.material.icons.Icons.Filled.Refresh, contentDescription = "再取得")
+                Icon(Icons.Filled.Refresh, contentDescription = "再取得")
             }
         }
         Spacer(Modifier.height(8.dp))
