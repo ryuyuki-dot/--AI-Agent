@@ -19,27 +19,76 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Grant execute permission for gradlew
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      # GitHub上での手動編集・アップロード時にAndroidManifest.xmlへ
+      # UTF-8 BOMが付与されたり改行がCRLF化されるとマニフェストパーサーが
+      # 「Error parsing AndroidManifest.xml」という詳細不明のエラーで落ちるため、
+      # ビルド前に自動で正規化＆構文チェックする。
+      - name: Normalize & validate AndroidManifest.xml files
         run: |
-          if [ -d "android" ]; then
-            chmod +x android/gradlew
-          else
-            chmod +x gradlew
+          set -e
+          echo "Searching for AndroidManifest.xml files..."
+          find . -name "AndroidManifest.xml" -print
+
+          find . -name "AndroidManifest.xml" | while read -r f; do
+            echo "--- Checking: $f ---"
+
+            # UTF-8 BOMを除去
+            sed -i '1s/^\xEF\xBB\xBF//' "$f"
+
+            # CRLF -> LF に統一
+            sed -i 's/\r$//' "$f"
+
+            # XMLとして妥当かここで検証（ここで失敗すれば原因箇所が明確に分かる）
+            if ! xmllint --noout "$f"; then
+              echo "!!! $f is not well-formed XML. Dumping content for inspection: !!!"
+              cat -A "$f"
+              exit 1
+            fi
+            echo "$f : OK"
+          done
+
+      - name: Find Project and Build APK
+        run: |
+          set -e
+          BUILD_FILE=$(find . \( -name "build.gradle" -o -name "build.gradle.kts" \) | grep "/app/" | head -n 1)
+
+          if [ -z "$BUILD_FILE" ]; then
+            BUILD_FILE=$(find . \( -name "build.gradle" -o -name "build.gradle.kts" \) | head -n 1)
           fi
 
-      - name: Build Debug APK
-        run: |
-          if [ -d "android" ]; then
-            cd android
-            ./gradlew assembleDebug
-          else
-            ./gradlew assembleDebug
+          if [ -z "$BUILD_FILE" ]; then
+            echo "Error: build.gradle file not found."
+            exit 1
           fi
+
+          APP_DIR=$(dirname "$BUILD_FILE")
+          PROJECT_DIR=$(dirname "$APP_DIR")
+          echo "Found Android project directory at: $PROJECT_DIR"
+          cd "$PROJECT_DIR"
+
+          if [ -f "./gradlew" ]; then
+            chmod +x ./gradlew
+            ./gradlew assembleDebug --stacktrace --info | tee /tmp/gradle-build.log
+          else
+            gradle wrapper --gradle-version 8.7
+            chmod +x ./gradlew
+            ./gradlew assembleDebug --stacktrace --info | tee /tmp/gradle-build.log
+          fi
+
+      - name: Upload build log (always, for diagnosis)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-build-log
+          path: /tmp/gradle-build.log
+          if-no-files-found: ignore
 
       - name: Upload APK Artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: personal-ai-agent-debug-apk
-          path: |
-            android/app/build/outputs/apk/debug/app-debug.apk
-            app/build/outputs/apk/debug/app-debug.apk
+          path: "**/app-debug.apk"
