@@ -76,6 +76,22 @@ data class LearningPlanResponse(
     val modules: List<LearningModule>
 )
 
+// ===== 教材についてのQ&A（チュータリング） =====
+data class ChatMessage(
+    val role: String, // "user" または "assistant"
+    val content: String
+)
+
+data class TutorChatRequest(
+    val topic: String,
+    val module_title: String,
+    val module_content: String,
+    val question: String,
+    val history: List<ChatMessage>? = null
+)
+
+data class TutorChatResponse(val answer: String)
+
 // ===== Actions / Usage =====
 data class AppUsageEntry(
     val package_name: String,

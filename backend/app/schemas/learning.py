@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel, Field, HttpUrl
 
 class LearningPlanRequest(BaseModel):
@@ -22,3 +22,21 @@ class LearningPlanResponse(BaseModel):
     topic: str
     total_steps: int
     modules: List[LearningModule]
+
+
+# ===== 教材についてのQ&A（チュータリング） =====
+
+class ChatMessage(BaseModel):
+    role: str  # "user" または "assistant"
+    content: str
+
+class TutorChatRequest(BaseModel):
+    topic: str = Field(..., example="Pythonによるデータ分析基礎")
+    module_title: str = Field(..., example="Pandasを用いたデータ読み込みとクレンジング")
+    module_content: str = Field(..., description="対象モジュールのcontent_markdown")
+    question: str = Field(..., example="read_csvとread_excelの違いは何ですか？")
+    history: Optional[List[ChatMessage]] = Field(default=None, description="これまでのやり取り（任意）")
+
+class TutorChatResponse(BaseModel):
+    answer: str
+

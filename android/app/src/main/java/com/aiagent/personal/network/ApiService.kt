@@ -26,6 +26,9 @@ interface ApiService {
     @POST("api/v1/learning/plans")
     suspend fun createLearningPlan(@Body req: LearningPlanRequest): LearningPlanResponse
 
+    @POST("api/v1/learning/tutor/chat")
+    suspend fun tutorChat(@Body req: TutorChatRequest): TutorChatResponse
+
     // --- Actions / Usage ---
     @POST("api/v1/actions/usage-logs")
     suspend fun sendUsageLogs(@Body req: UsageLogRequest): UsageLogResponse

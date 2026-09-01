@@ -1,13 +1,21 @@
 # Personal AI Agent（パーソナルAIエージェント）
 
+## 今すぐやること（最短で動かすための手順）
+1. **チャットに貼ったAPIキーは失効させてください**（https://aistudio.google.com/apikey ）。新しいキーを発行し、以後はコードやチャットには貼らないでください。
+2. `backend/README.md` の「Render.com」手順に従い、バックエンドをデプロイ。新しいAPIキーはRenderの管理画面上でのみ入力します。
+3. デプロイ完了後に発行されるURL（例: `https://personal-ai-agent-api-xxxx.onrender.com`）を控える
+4. `android/app/build.gradle.kts` を開き、`API_BASE_URL` の値をそのURLに書き換える（末尾に `/` を忘れずに）
+5. GitHubに変更をpush → Actionsが自動でAPKを再ビルド
+6. できあがった `app-debug.apk` を再度スマホにインストール（上書きでOK）
+
 いただいたGemini生成コード（Client/Agent Core/Data Layerの3層アーキテクチャ設計に基づくバックエンド一式）
 を土台に、実際に動くAndroidアプリとして組み立てたプロジェクトです。
 
-- `backend/` … FastAPI（提供コードを整理し、不足していた schedules / actions ルーターを追加）
+- `backend/` … FastAPI（提供コードを整理し、不足していた schedules / actions ルーターを追加、学習機能はGemini API連携済み）
 - `android/` … Kotlin + Jetpack Compose のAndroidアプリ本体
 
 ## 進め方
-1. `backend/README.md` に従ってバックエンドをデプロイ（Cloud Run等）
+1. `backend/README.md` に従ってバックエンドをデプロイ（Render.com推奨、Cloud Runも可）
 2. `android/app/build.gradle.kts` の `API_BASE_URL` にデプロイ先URLを設定
 3. `android/README.md` に従ってAPKをビルド
 4. APKをGoogle Driveにアップロードし、スマホからダウンロード→インストール
