@@ -3,18 +3,26 @@ Gemini APIとの通信をまとめたモジュール。
 Google GenAI SDK（google-genai）を使用（旧 google-generativeai は非推奨のため使用しない）。
 - 学習プランの生成（プロンプトでJSON形式の出力を指示し、パースする）
 - 生成済み教材についてのQ&A（チュータリング）
+
+Gemini側が一時的に混雑している（503 UNAVAILABLE）場合に備えて、
+軽いリトライ（自動再試行）を組み込んでいる。
 """
 import json
 import os
 import re
+import time
 from typing import Any, Optional
 
 from google import genai
+from google.genai import errors as genai_errors
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
 
 _client: Optional[genai.Client] = None
+
+_MAX_RETRIES = 3
+_RETRY_DELAY_SECONDS = 3
 
 
 def _get_client() -> genai.Client:
@@ -26,6 +34,22 @@ def _get_client() -> genai.Client:
     if _client is None:
         _client = genai.Client(api_key=GEMINI_API_KEY)
     return _client
+
+
+def _generate_with_retry(client: genai.Client, prompt: str):
+    """Geminiが一時的に混雑（503）している場合に数回リトライする。"""
+    last_error: Optional[Exception] = None
+    for attempt in range(1, _MAX_RETRIES + 1):
+        try:
+            return client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
+        except genai_errors.APIError as e:
+            is_overloaded = getattr(e, "code", None) == 503
+            last_error = e
+            if is_overloaded and attempt < _MAX_RETRIES:
+                time.sleep(_RETRY_DELAY_SECONDS * attempt)
+                continue
+            raise
+    raise last_error  # pragma: no cover
 
 
 def _extract_json(text: str) -> Any:
@@ -68,7 +92,7 @@ def generate_learning_plan(topic: str, desired_duration_days: int) -> dict:
 ・URLは実在しない場合、公式サイトのトップページなど確度の高いものにすること
 """
 
-    response = client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
+    response = _generate_with_retry(client, prompt)
     data = _extract_json(response.text)
     return data
 
@@ -100,5 +124,5 @@ def ask_tutor(topic: str, module_title: str, module_content: str, question: str,
 教材の内容を踏まえ、初学者にも分かりやすく、日本語で簡潔に（300文字程度を目安に）回答してください。
 """
 
-    response = client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
+    response = _generate_with_retry(client, prompt)
     return response.text.strip()
