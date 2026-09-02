@@ -9,4 +9,4 @@ services:
       - key: GEMINI_API_KEY
         sync: false   # Renderの管理画面から手動で値を入力する（コードには書かない）
       - key: GEMINI_MODEL
-        value: gemini-2.5-flash
+        value: gemini-3.5-flash

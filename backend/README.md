@@ -26,7 +26,7 @@ NLP/RAGの中身は元コード同様 TODO のスタブのままです（実運�
      --allow-unauthenticated --set-env-vars GEMINI_API_KEY=発行したキー
    ```
    （キーをコマンド履歴に残したくない場合はSecret Managerの利用を推奨します）
-4. 使用するモデルを変更したい場合は環境変数 `GEMINI_MODEL`（デフォルト: `gemini-2.5-flash`）で指定できます
+4. 使用するモデルを変更したい場合は環境変数 `GEMINI_MODEL`（デフォルト: `gemini-3.5-flash`）で指定できます
 
 APIキー未設定のまま `/api/v1/learning/*` を呼ぶと、503エラーで分かりやすくその旨が返ります。
 
