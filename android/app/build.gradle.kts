@@ -14,7 +14,7 @@ android {
         versionCode = 1
         versionName = "1.0"
         // ↓バックエンドのURLに合わせて変更してください（例: Cloud Run発行URL）
-        buildConfigField("String", "API_BASE_URL", "\"https://your-backend-url.example.com/\"")
+        buildConfigField("String", "API_BASE_URL", "\"https://personal-ai-agent-api-37jq.onrender.com/\"")
     }
 
     buildFeatures {
