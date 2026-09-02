@@ -43,7 +43,7 @@ fun LearningScreen() {
                         val res = ApiClient.service.createLearningPlan(LearningPlanRequest(topic = topic))
                         modules = res.modules
                     } catch (e: Exception) {
-                        error = "学習プランの作成に失敗しました。バックエンドのGEMINI_API_KEY設定等を確認してください。"
+                        error = "学習プランの作成に失敗しました: ${e.javaClass.simpleName} - ${e.message}"
                     } finally {
                         loading = false
                     }
