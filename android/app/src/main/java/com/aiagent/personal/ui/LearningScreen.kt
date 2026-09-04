@@ -1,30 +1,48 @@
 package com.aiagent.personal.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.aiagent.personal.data.ChatMessage
+import com.aiagent.personal.data.LearningHistoryStore
 import com.aiagent.personal.data.LearningModule
 import com.aiagent.personal.data.LearningPlanRequest
+import com.aiagent.personal.data.SavedLearningPlan
 import com.aiagent.personal.data.TutorChatRequest
 import com.aiagent.personal.network.ApiClient
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.UUID
 
 @Composable
 fun LearningScreen() {
+    val context = LocalContext.current
     var topic by remember { mutableStateOf("") }
     var modules by remember { mutableStateOf<List<LearningModule>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var history by remember { mutableStateOf(LearningHistoryStore.load(context)) }
+    var showHistory by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("学びたいことをリクエスト", style = MaterialTheme.typography.headlineSmall)
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Text("学びたいことをリクエスト", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+            TextButton(onClick = { showHistory = true }) {
+                Text("学習履歴 (${history.size})")
+            }
+        }
         Spacer(Modifier.height(12.dp))
         OutlinedTextField(
             value = topic,
@@ -42,6 +60,16 @@ fun LearningScreen() {
                     try {
                         val res = ApiClient.service.createLearningPlan(LearningPlanRequest(topic = topic))
                         modules = res.modules
+                        // 生成したシナリオを端末内履歴に保存（後から振り返れるように）
+                        history = LearningHistoryStore.save(
+                            context,
+                            SavedLearningPlan(
+                                planId = res.plan_id.ifBlank { UUID.randomUUID().toString() },
+                                topic = res.topic,
+                                createdAtEpochMillis = System.currentTimeMillis(),
+                                modules = res.modules
+                            )
+                        )
                     } catch (e: Exception) {
                         error = "学習プランの作成に失敗しました: ${e.javaClass.simpleName} - ${e.message}"
                     } finally {
@@ -63,7 +91,84 @@ fun LearningScreen() {
             items(modules) { module -> ModuleCard(topic = topic, module = module) }
         }
     }
+
+    if (showHistory) {
+        HistoryDialog(
+            history = history,
+            onDismiss = { showHistory = false },
+            onSelect = { selected ->
+                topic = selected.topic
+                modules = selected.modules
+                showHistory = false
+            },
+            onDelete = { planId ->
+                history = LearningHistoryStore.delete(context, planId)
+            }
+        )
+    }
 }
+
+@Composable
+private fun HistoryDialog(
+    history: List<SavedLearningPlan>,
+    onDismiss: () -> Unit,
+    onSelect: (SavedLearningPlan) -> Unit,
+    onDelete: (String) -> Unit
+) {
+    val dateFormat = remember { SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.JAPAN) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("閉じる") }
+        },
+        title = { Text("学習履歴") },
+        text = {
+            if (history.isEmpty()) {
+                Text("まだ履歴がありません。学習シナリオを作成すると、ここに記録されます。")
+            } else {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.heightIn(max = 400.dp)) {
+                    items(history, key = { it.planId }) { entry ->
+                        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickableSelect { onSelect(entry) }
+                                ) {
+                                    Text(entry.topic, style = MaterialTheme.typography.titleSmall)
+                                    Text(
+                                        dateFormat.format(Date(entry.createdAtEpochMillis)),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        "全${entry.modules.size}ステップ",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                                IconButton(onClick = { onDelete(entry.planId) }) {
+                                    Icon(
+                                        Icons.Filled.Delete,
+                                        contentDescription = "削除"
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    )
+}
+
+private fun Modifier.clickableSelect(onClick: () -> Unit): Modifier =
+    this.then(Modifier.clickable(onClick = onClick))
 
 @Composable
 private fun ModuleCard(topic: String, module: LearningModule) {
